@@ -3,24 +3,34 @@ import {
   ApolloClient,
   ApolloProvider,
   InMemoryCache,
-  useQuery,
+  useSubscription,
   gql,
+  useMutation,
 } from "@apollo/client";
+
+// Chk voor nieuwe berichten en updaten/
+import { WebSocketLink } from '@apollo/client/link/ws';
 
 //GUI
 import {
-    Container
+    Container, Row, Col, FormInput, Button
 } from "shards-react";
 
-
+const link = new WebSocketLink({
+  uri: `ws://localhost:4000/`,
+  options: {
+    reconnect: true
+  }
+});
 
 const client = new ApolloClient({
+  link,
   uri: "http://localhost:4000/",
   cache: new InMemoryCache(),
 });
 
 const GET_MESSAGES = gql`
-    query{
+    subscription{
         messages{
             id
             content
@@ -29,8 +39,13 @@ const GET_MESSAGES = gql`
     }
 `;
 
+const POST_MESSAGE = gql`
+    mutation ($user: String!, $content: String!){
+        postMessage (user: $user, content: $content)    
+}`;
+
 const Messages = ({user}) => {
-    const { data } = useQuery(GET_MESSAGES);
+    const { data } = useSubscription(GET_MESSAGES);
     if (!data) {
         return null;
     }
@@ -45,6 +60,22 @@ const Messages = ({user}) => {
                         paddingBottom : "3em",
                     }}  
                 >    
+                {user !== messageUser && (
+                    <div
+                        style = {{
+                            height: 40,
+                            width: 40,
+                            marginRight: '0.5em',
+                            border: '2px solid #e5e6ea',
+                            borderRadius: 20,
+                            textAlign: "center",
+                            fontSize: "18pt",
+                            paddingTop: 3,
+                        }}
+                    >
+                        {messageUser.slice(0,2).toUpperCase()}
+                    </div>
+                )}
                     <div
                         style = {{
                             background: user === messageUser ? "#58bf56" : "#e5e6ea",
@@ -63,9 +94,62 @@ const Messages = ({user}) => {
 }
 
 const Chat = () => {
+
+    const [state,stateSet] = React.useState({
+        user: "Giorikas",
+        content: "",
+    });
+
+    const [postMessage] = useMutation(POST_MESSAGE);
+
+    const onSend = () => {
+        if(state.content.length >0) {
+        postMessage({
+            variables: state,
+        });
+        }
+        stateSet({
+            ...state,
+            content: "",
+        });
+    };
+
   return (
     <Container>
-        <Messages user="Giorikas" />
+        <Messages user={state.user} />
+        <Row>
+            <Col xs={2} style= {{padding: 0}}>
+                <FormInput
+                    label= "user"
+                    value= {state.user}
+                    onChange={(evt) => stateSet({
+                        ...state,
+                        user: evt.target.value,
+                    })}
+                />
+            </Col>
+            <Col xs={8}>
+                <FormInput
+                    label= "Content"
+                    value= {state.content}
+                    onChange={(evt) => 
+                        stateSet({
+                            ...state,
+                            content: evt.target.value,
+                        })
+                    }
+                    onKeyUp={(evt)=> {
+                        if (evt.keyCode === 13) {
+                        onSend();
+                        }
+                    }}
+                />
+            </Col>
+            <Col xs={2} style= {{padding: 0}}>
+                <Button onClick={()=>onSend()} style={{width: '100%'}} 
+                />Send
+            </Col>
+        </Row>
     </Container>
   );
 };
