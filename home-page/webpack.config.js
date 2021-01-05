@@ -4,7 +4,7 @@ const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPl
 const deps = require("./package.json").dependencies;
 module.exports = {
   output: {
-    publicPath: "http://localhost:8085/",
+    publicPath: "http://localhost:4005/",
   },
 
   resolve: {
@@ -12,7 +12,7 @@ module.exports = {
   },
 
   devServer: {
-    port: 8085,
+    port: 4005,
   },
 
   module: {
@@ -40,12 +40,13 @@ module.exports = {
 
   plugins: [
     new ModuleFederationPlugin({
-      name: "starter",
+      name: "home",
+      library: {type: "var", name: "home"},
       filename: "remoteEntry.js",
-      remotes: {},
-      exposes: {
-        "./Chat": "./src/Chat",
+      remotes: {
+        chat: "chat",
       },
+      exposes: {},
       shared: {
         ...deps,
         react: {
@@ -58,8 +59,8 @@ module.exports = {
         },
       },
     }),
-      new HtmlWebPackPlugin({
+    new HtmlWebPackPlugin({
       template: "./src/index.html",
-      }),
+    }),
   ],
 };
